@@ -7,7 +7,7 @@ SLOWPERIOD = 26
 
 
 def generate_momentum_indicators(
-    open,
+    open_,
     high,
     low,
     close,
@@ -25,7 +25,7 @@ def generate_momentum_indicators(
     datadict["MOM_AROONDOWN"] = aroon_down
     datadict["MOM_AROONUP"] = aroon_up
     datadict["MOM_AROONOSC"] = talib.AROONOSC(high, low, timeperiod=timeperiod)
-    datadict["MOM_BOP"] = talib.BOP(open, high, low, close)
+    datadict["MOM_BOP"] = talib.BOP(open_, high, low, close)
     datadict["MOM_CCI"] = talib.CCI(high, low, close, timeperiod=timeperiod)
     datadict["MOM_CMO"] = talib.CMO(close, timeperiod=timeperiod)
     datadict["MOM_DX"] = talib.DX(high, low, close, timeperiod=timeperiod)
@@ -100,12 +100,12 @@ def generate_volatility_indicators(high, low, close, timeperiod: int = TIMEPERIO
         return datadict
 
 
-def generate_pattern_recognition(open, high, low, close, return_dataframe=True):
+def generate_pattern_recognition(open_, high, low, close, return_dataframe=True):
     datadict = {}
     candle_names = talib.get_function_groups()["Pattern Recognition"]
     for candle in candle_names:
         datadict["PATTERN_" + candle] = getattr(talib, candle)(
-            open,
+            open_,
             high,
             low,
             close,
