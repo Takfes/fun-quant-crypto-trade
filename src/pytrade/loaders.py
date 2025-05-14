@@ -146,7 +146,7 @@ def fetch_crypto_ohlcv_data(
     if not all_ohlcv:
         return pd.DataFrame(columns=COLUMNS, index=[INDEX])
 
-    data = pd.DataFrame(all_ohlcv, columns=[INDEX] + COLUMNS)
+    data = pd.DataFrame(all_ohlcv, columns=[INDEX, *COLUMNS])
     data[INDEX] = pd.to_datetime(data[INDEX], unit="ms")
     data.set_index(INDEX, inplace=True)
 

@@ -170,7 +170,7 @@ swing_lows = df['low'][::-1].rolling(swing_lookback).min()[::-1]
 
 # Maintain structure history (you'd store last confirmed HH and HL)
 
-# BoS (continuation): 
+# BoS (continuation):
 bos_long = df['close'] > swing_highs.shift(1)  # breaking previous high
 bos_short = df['close'] < swing_lows.shift(1)  # breaking previous low
 
@@ -257,7 +257,7 @@ zone_detected = consolidation.shift(1) & impulse
 
 ### 🧠 Bonus Strategy: Combine Structure + Zone Logic
 
-Use **CHoCH inside demand zone** = high probability long setup.  
+Use **CHoCH inside demand zone** = high probability long setup.
 Use **BoS + break from supply** = continuation short setup.
 
 Add filters:

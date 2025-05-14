@@ -182,12 +182,12 @@ def aggregate_ltf_to_htf(df_ltf, timeframe='1H', agg_funcs=None):
 ## 🏭 Production Setup Strategy
 
 ### 📂 Options:
-1. **Single resampled source**  
+1. **Single resampled source**
    - Resample the base OHLCV into multiple TFs in code
    - Pros: Simple, no external sync issues
    - Cons: More compute
 
-2. **Multiple data sources**  
+2. **Multiple data sources**
    - Store precomputed HTF features or load from database/API
    - Join on timestamp into LTF
    - Pros: Scalable, modular

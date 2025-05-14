@@ -20,9 +20,7 @@ def generate_momentum_indicators(
     datadict = {}
     datadict["MOM_ADX"] = talib.ADX(high, low, close, timeperiod=timeperiod)
     datadict["MOM_ADXR"] = talib.ADXR(high, low, close, timeperiod=timeperiod)
-    datadict["MOM_APO"] = talib.APO(
-        close, fastperiod=fastperiod, slowperiod=slowperiod, matype=0
-    )
+    datadict["MOM_APO"] = talib.APO(close, fastperiod=fastperiod, slowperiod=slowperiod, matype=0)
     aroon_down, aroon_up = talib.AROON(high, low, timeperiod=timeperiod)
     datadict["MOM_AROONDOWN"] = aroon_down
     datadict["MOM_AROONUP"] = aroon_up
@@ -31,9 +29,7 @@ def generate_momentum_indicators(
     datadict["MOM_CCI"] = talib.CCI(high, low, close, timeperiod=timeperiod)
     datadict["MOM_CMO"] = talib.CMO(close, timeperiod=timeperiod)
     datadict["MOM_DX"] = talib.DX(high, low, close, timeperiod=timeperiod)
-    macd, macdsignal, macdhist = talib.MACD(
-        close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=9
-    )
+    macd, macdsignal, macdhist = talib.MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=9)
     datadict["MOM_MACD"] = macd
     datadict["MOM_MACDSIGNAL"] = macdsignal
     datadict["MOM_MACDHIST"] = macdhist
@@ -43,9 +39,7 @@ def generate_momentum_indicators(
     datadict["MOM_MOM"] = talib.MOM(close, timeperiod=timeperiod)
     datadict["MOM_PLUSDI"] = talib.PLUS_DI(high, low, close, timeperiod=timeperiod)
     datadict["MOM_PLUSDM"] = talib.PLUS_DM(high, low, timeperiod=timeperiod)
-    datadict["MOM_PPO"] = talib.PPO(
-        close, fastperiod=fastperiod, slowperiod=slowperiod, matype=0
-    )
+    datadict["MOM_PPO"] = talib.PPO(close, fastperiod=fastperiod, slowperiod=slowperiod, matype=0)
     datadict["MOM_ROC"] = talib.ROC(close, timeperiod=timeperiod)
     datadict["MOM_ROCP"] = talib.ROCP(close, timeperiod=timeperiod)
     datadict["MOM_ROCR"] = talib.ROCR(close, timeperiod=timeperiod)
@@ -63,18 +57,12 @@ def generate_momentum_indicators(
     )
     datadict["MOM_STOCHK"] = slowk
     datadict["MOM_STOCHD"] = slowd
-    fastk, fastd = talib.STOCHF(
-        high, low, close, fastk_period=5, fastd_period=3, fastd_matype=0
-    )
+    fastk, fastd = talib.STOCHF(high, low, close, fastk_period=5, fastd_period=3, fastd_matype=0)
     datadict["MOM_STOCHFK"] = fastk
     datadict["MOM_STOCHFD"] = fastd
-    fastk, fastd = talib.STOCHRSI(
-        close, timeperiod=timeperiod, fastk_period=5, fastd_period=3, fastd_matype=0
-    )
+    fastk, fastd = talib.STOCHRSI(close, timeperiod=timeperiod, fastk_period=5, fastd_period=3, fastd_matype=0)
     datadict["MOM_TRIX"] = talib.TRIX(close, timeperiod=30)
-    datadict["MOM_ULTOSC"] = talib.ULTOSC(
-        high, low, close, timeperiod1=7, timeperiod2=14, timeperiod3=28
-    )
+    datadict["MOM_ULTOSC"] = talib.ULTOSC(high, low, close, timeperiod1=7, timeperiod2=14, timeperiod3=28)
     datadict["MOM_WILLR"] = talib.WILLR(high, low, close, timeperiod=timeperiod)
     if return_dataframe:
         return pd.DataFrame(datadict, index=close.index)
@@ -93,9 +81,7 @@ def generate_volume_indicators(
 ):
     datadict = {}
     datadict["VOLUME_AD"] = talib.AD(high, low, close, volume)
-    datadict["VOLUME_ADOSC"] = talib.ADOSC(
-        high, low, close, volume, fastperiod=fastperiod, slowperiod=slowperiod
-    )
+    datadict["VOLUME_ADOSC"] = talib.ADOSC(high, low, close, volume, fastperiod=fastperiod, slowperiod=slowperiod)
     datadict["VOLUME_OBV"] = talib.OBV(close, volume)
     if return_dataframe:
         return pd.DataFrame(datadict, index=close.index)
@@ -103,9 +89,7 @@ def generate_volume_indicators(
         return datadict
 
 
-def generate_volatility_indicators(
-    high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True
-):
+def generate_volatility_indicators(high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True):
     datadict = {}
     datadict["VOLATILITY_ATR"] = talib.ATR(high, low, close, timeperiod=timeperiod)
     datadict["VOLATILITY_NATR"] = talib.NATR(high, low, close, timeperiod=timeperiod)
@@ -132,13 +116,9 @@ def generate_pattern_recognition(open, high, low, close, return_dataframe=True):
         return datadict
 
 
-def generate_overlap_studies(
-    high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True
-):
+def generate_overlap_studies(high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True):
     datadict = {}
-    upper, middle, lower = talib.BBANDS(
-        close, timeperiod=timeperiod, nbdevup=2, nbdevdn=2, matype=0
-    )
+    upper, middle, lower = talib.BBANDS(close, timeperiod=timeperiod, nbdevup=2, nbdevdn=2, matype=0)
     datadict["OVRP_BBANDS_UPPER"] = upper
     datadict["OVRP_BBANDS_MIDDLE"] = middle
     datadict["OVRP_BBANDS_LOWER"] = lower
@@ -183,22 +163,14 @@ def generate_cycle_indicators(close, return_dataframe=True):
         return datadict
 
 
-def generate_statistic_functions(
-    high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True
-):
+def generate_statistic_functions(high, low, close, timeperiod: int = TIMEPERIOD, return_dataframe=True):
     datadict = {}
     datadict["STAT_BETA"] = talib.BETA(high, low, timeperiod=timeperiod)
     datadict["STAT_CORREL"] = talib.CORREL(high, low, timeperiod=timeperiod)
     datadict["STAT_LINEARREG"] = talib.LINEARREG(close, timeperiod=timeperiod)
-    datadict["STAT_LINEARREG_ANGLE"] = talib.LINEARREG_ANGLE(
-        close, timeperiod=timeperiod
-    )
-    datadict["STAT_LINEARREG_INTERCEPT"] = talib.LINEARREG_INTERCEPT(
-        close, timeperiod=timeperiod
-    )
-    datadict["STAT_LINEARREG_SLOPE"] = talib.LINEARREG_SLOPE(
-        close, timeperiod=timeperiod
-    )
+    datadict["STAT_LINEARREG_ANGLE"] = talib.LINEARREG_ANGLE(close, timeperiod=timeperiod)
+    datadict["STAT_LINEARREG_INTERCEPT"] = talib.LINEARREG_INTERCEPT(close, timeperiod=timeperiod)
+    datadict["STAT_LINEARREG_SLOPE"] = talib.LINEARREG_SLOPE(close, timeperiod=timeperiod)
     datadict["STAT_STDDEV"] = talib.STDDEV(close, timeperiod=timeperiod, nbdev=1)
     datadict["STAT_TSF"] = talib.TSF(close, timeperiod=timeperiod)
     datadict["STAT_VAR"] = talib.VAR(close, timeperiod=timeperiod, nbdev=1)
@@ -272,25 +244,17 @@ class FeatureEngineer:
             )
         )
         self.dict.update(
-            generate_volatility_indicators(
-                self.high, self.low, self.close, self.timeperiod, return_dataframe=False
-            )
+            generate_volatility_indicators(self.high, self.low, self.close, self.timeperiod, return_dataframe=False)
         )
         self.dict.update(
-            generate_pattern_recognition(
-                self.open, self.high, self.low, self.close, return_dataframe=False
-            )
+            generate_pattern_recognition(self.open, self.high, self.low, self.close, return_dataframe=False)
         )
         self.dict.update(
-            generate_overlap_studies(
-                self.high, self.low, self.close, self.timeperiod, return_dataframe=False
-            )
+            generate_overlap_studies(self.high, self.low, self.close, self.timeperiod, return_dataframe=False)
         )
         self.dict.update(generate_cycle_indicators(self.close, return_dataframe=False))
         self.dict.update(
-            generate_statistic_functions(
-                self.high, self.low, self.close, self.timeperiod, return_dataframe=False
-            )
+            generate_statistic_functions(self.high, self.low, self.close, self.timeperiod, return_dataframe=False)
         )
         indicators = pd.DataFrame(self.dict, index=self.data.index)
         data = self.data.join(indicators)

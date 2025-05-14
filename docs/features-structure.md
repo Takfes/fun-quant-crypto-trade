@@ -5,8 +5,8 @@
 In price action:
 - Price moves **in patterns**.
 - These patterns form **structures**.
-- We track these to decide:  
-  - *“Is the market following the leader?”* (BoS)  
+- We track these to decide:
+  - *“Is the market following the leader?”* (BoS)
   - *“Has the leader changed?”* (CHoCH)
 
 ---
@@ -18,10 +18,10 @@ In price action:
 🔁 The market was going up like this:
 
 ```
-⬆️ High1  
-⬇️ Low1  
-⬆️ High2  
-⬇️ Low2  
+⬆️ High1
+⬇️ Low1
+⬆️ High2
+⬇️ Low2
 ⬆️ High3
 ```
 
@@ -36,7 +36,7 @@ That’s what a strong **uptrend** looks like.
 
 That break = **CHoCH** → The market has “changed character” → It might be **starting a downtrend**.
 
-👉 Think of it like:  
+👉 Think of it like:
 *“Wait, that was our last safety level — and it just broke! Something’s changed…”*
 
 ---
@@ -45,10 +45,10 @@ That break = **CHoCH** → The market has “changed character” → It might b
 
 Same story:
 
-In an **uptrend**, once we break the **previous high** (e.g., High3 > High2),  
+In an **uptrend**, once we break the **previous high** (e.g., High3 > High2),
 that’s a **BoS** → the uptrend is **continuing**.
 
-👉 Think of it like:  
+👉 Think of it like:
 *“Yup, the trend is still strong — new high broken!”*
 
 ---

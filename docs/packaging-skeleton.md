@@ -1,6 +1,6 @@
 # Quants Packaging Guidelines
 
-✅ **include both functions *and* transformers.**  
+✅ **include both functions *and* transformers.**
 
 ---
 
