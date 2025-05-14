@@ -1,159 +1,83 @@
 import numpy as np
 import pandas as pd
-import pandas_ta as ta
+import talib
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-def label_by_fixed_horizon(df: pd.DataFrame, horizon: int, threshold: float, price_col: str = "close") -> pd.Series:
+def target_transformer_wrapper(transform_function):
     """
-    Labels time series data based on fixed-time horizon returns.
+    A wrapper to convert a target transformation function into a scikit-learn compatible Transformer.
+
+    Args:
+        transform_function (callable): A function that transforms the target variable.
+
+    Returns:
+        A scikit-learn compatible transformer for the target variable.
+    """
+
+    class WrappedTargetTransformer(BaseEstimator, TransformerMixin):
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def fit(self, y, X=None):
+            # No fitting necessary for this transformer
+            return self
+
+        def transform(self, y):
+            # Ensure input is a pandas Series
+            if not isinstance(y, pd.Series):
+                raise ValueError("Input must be a pandas Series")
+
+            y_ = y.copy()
+            return transform_function(y_, **self.kwargs)
+
+    return WrappedTargetTransformer
+
+
+def fixed_horizon_labeler_func(
+    df: pd.DataFrame,
+    horizon: int,
+    up_threshold: float,
+    down_threshold: float,
+    close_col: str = "close",
+) -> pd.Series:
+    """
+    Labels time series data based on fixed-time horizon returns with asymmetrical thresholds.
 
     Args:
         df (pd.DataFrame): DataFrame containing price data.
         horizon (int): Number of future bars to calculate returns.
-        threshold (float): Threshold for classifying returns as positive or negative.
-        price_col (str): Column name of the price data.
+        up_threshold (float): Threshold for classifying positive returns.
+        down_threshold (float): Threshold for classifying negative returns.
+        close_col (str): Column name of the price data.
 
     Returns:
         pd.Series: A Series of labels (-1, 0, or 1) indexed to the original DataFrame.
-                   -1: Negative return below the threshold.
+                   -1: Negative return below the down_threshold.
                     0: Return within the threshold range.
-                    1: Positive return above the threshold.
+                    1: Positive return above the up_threshold.
     """
-    prices = df[price_col]
+    if close_col not in df.columns:
+        raise ValueError(f"Column '{close_col}' not found in DataFrame.")
+
+    prices = df[close_col]
     future_returns = (prices.shift(-horizon) - prices) / prices  # % return
 
-    labels = np.where(future_returns > threshold, 1, np.where(future_returns < -threshold, -1, 0))
+    labels = np.where(
+        future_returns > up_threshold,
+        1,
+        np.where(future_returns < -down_threshold, -1, 0),
+    )
 
-    return pd.Series(labels, index=df.index, name="label")
-
-
-def label_by_absolute_threshold(
-    df: pd.DataFrame, threshold: float, horizon: int, price_col: str = "Close"
-) -> pd.DataFrame:
-    """
-    Labels data based on absolute price movement over a fixed horizon.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing price data.
-        threshold (float): Absolute price movement threshold.
-        horizon (int): Number of future bars to evaluate price movement.
-        price_col (str): Column name of the price data.
-
-    Returns:
-        pd.DataFrame: DataFrame with an additional 'Label' column:
-                      -1: Price dropped below the lower threshold.
-                       0: Price stayed within the thresholds.
-                       1: Price exceeded the upper threshold.
-    """
-    df = df.copy()
-    df["Label"] = 0
-
-    upper_threshold = df[price_col] + threshold
-    lower_threshold = df[price_col] - threshold
-
-    for i in range(len(df) - horizon):
-        future_prices = df.loc[i + 1 : i + horizon, price_col]
-        if any(future_prices > upper_threshold[i]):
-            df.loc[i, "Label"] = 1
-        elif any(future_prices < lower_threshold[i]):
-            df.loc[i, "Label"] = -1
-
-    return df
+    return pd.Series(labels, index=df.index, name=f"target_h{horizon}up{up_threshold}down{down_threshold}")
 
 
-def label_by_atr_threshold(df: pd.DataFrame, horizon: int, atr_period: int = 14, atr_mult: float = 2.0) -> pd.DataFrame:
-    """
-    Labels data based on ATR-based thresholds over a fixed horizon.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing 'High', 'Low', and 'Close' columns.
-        horizon (int): Number of future bars to evaluate price movement.
-        atr_period (int): Period for ATR calculation.
-        atr_mult (float): Multiplier for ATR to set the threshold range.
-
-    Returns:
-        pd.DataFrame: DataFrame with an additional 'Label_ATR' column:
-                      -1: Price dropped below the ATR-based lower threshold.
-                       0: Price stayed within the ATR-based thresholds.
-                       1: Price exceeded the ATR-based upper threshold.
-    """
-    df = df.copy()
-
-    # Compute ATR
-    df["ATR"] = ta.atr(high=df["High"], low=df["Low"], close=df["Close"], length=atr_period)
-
-    # Define dynamic thresholds based on ATR
-    upper_threshold = df["Close"] + atr_mult * df["ATR"]
-    lower_threshold = df["Close"] - atr_mult * df["ATR"]
-
-    df["Label_ATR"] = 0
-
-    # Label based on future movement against ATR thresholds
-    for i in range(len(df) - horizon):
-        future_prices = df.loc[i + 1 : i + horizon, "Close"]
-        if any(future_prices > upper_threshold[i]):
-            df.loc[i, "Label_ATR"] = 1
-        elif any(future_prices < lower_threshold[i]):
-            df.loc[i, "Label_ATR"] = -1
-
-    return df
+FixedHorizonTargetTransformer = target_transformer_wrapper(fixed_horizon_labeler_func)
 
 
-def label_by_atr_long_short(
-    df: pd.DataFrame, horizon: int, atr_period: int = 14, tp_mult: float = 1.5, sl_mult: float = 1.0
-) -> pd.DataFrame:
-    """
-    Labels data for both long and short positions using ATR-based thresholds.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing 'High', 'Low', and 'Close' columns.
-        horizon (int): Number of future bars to evaluate price movement.
-        atr_period (int): Period for ATR calculation.
-        tp_mult (float): Take profit multiplier for ATR.
-        sl_mult (float): Stop loss multiplier for ATR.
-
-    Returns:
-        pd.DataFrame: DataFrame with 'Label_Long' and 'Label_Short' columns:
-                      Label_Long:
-                        1: Price exceeded the take profit threshold without hitting stop loss.
-                        0: No significant movement.
-                      Label_Short:
-                       -1: Price dropped below the stop loss threshold without hitting take profit.
-                        0: No significant movement.
-    """
-    df = df.copy()
-    df["ATR"] = ta.atr(df["High"], df["Low"], df["Close"], length=atr_period)
-
-    # Define long thresholds
-    lower_threshold_long = df["Close"] - df["ATR"] * sl_mult
-    upper_threshold_long = df["Close"] + df["ATR"] * tp_mult
-
-    # Define short thresholds
-    lower_threshold_short = df["Close"] - df["ATR"] * tp_mult
-    upper_threshold_short = df["Close"] + df["ATR"] * sl_mult
-
-    df["Label_Long"] = 0
-    df["Label_Short"] = 0
-
-    for i in range(len(df) - horizon):
-        future_prices = df["Close"].iloc[i + 1 : i + 1 + horizon]
-
-        # SHORT condition: price drops below lower without hitting upper
-        cond_short_1 = (future_prices < lower_threshold_short.iloc[i]).any()
-        cond_short_2 = (future_prices < upper_threshold_short.iloc[i]).all()
-        if cond_short_1 and cond_short_2:
-            df.loc[i, "Label_Short"] = -1
-
-        # LONG condition: price rises above upper without hitting lower
-        cond_long_1 = (future_prices > upper_threshold_long.iloc[i]).any()
-        cond_long_2 = (future_prices > lower_threshold_long.iloc[i]).all()
-        if cond_long_1 and cond_long_2:
-            df.loc[i, "Label_Long"] = 1
-
-    return df
-
-
-def label_by_trade_outcomes(df: pd.DataFrame, horizon: int, tp: float, sl: float) -> pd.Series:
+def trade_outcome_labeler_func(
+    df: pd.DataFrame, horizon: int, tp: float, sl: float, close_col: str = "close"
+) -> pd.Series:
     """
     Labels trading data based on simulated trade outcomes.
 
@@ -169,7 +93,10 @@ def label_by_trade_outcomes(df: pd.DataFrame, horizon: int, tp: float, sl: float
                     0: Neither take-profit nor stop-loss hit within the horizon.
                     1: Take-profit hit within the horizon.
     """
-    close_prices = df["Close"].values
+    if close_col not in df.columns:
+        raise ValueError(f"Column '{close_col}' not found in DataFrame.")
+
+    close_prices = df[close_col].values
     labels = []
 
     for i in range(len(df)):
@@ -191,4 +118,70 @@ def label_by_trade_outcomes(df: pd.DataFrame, horizon: int, tp: float, sl: float
 
         labels.append(label)
 
-    return pd.Series(labels, index=df.index, name="Label")
+    return pd.Series(labels, index=df.index, name=f"target_h{horizon}tp{tp}sl{sl}")
+
+
+TradeOutcomeTargetTransformer = target_transformer_wrapper(trade_outcome_labeler_func)
+
+
+def atr_threshold_labeler_func(
+    df: pd.DataFrame,
+    horizon: int,
+    atr_period: int = 14,
+    atr_mult_long: float = 2.0,
+    atr_mult_short: float = 2.0,
+    close_col: str = "close",
+    high_col: str = "high",
+    low_col: str = "low",
+) -> pd.DataFrame:
+    """
+    Labels data based on ATR-based thresholds over a fixed horizon.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing 'High', 'Low', and 'Close' columns.
+        horizon (int): Number of future bars to evaluate price movement.
+        atr_period (int): Period for ATR calculation.
+        atr_mult (float): Multiplier for ATR to set the threshold range.
+
+    Returns:
+        pd.DataFrame: DataFrame with an additional 'Label_ATR' column:
+                      -1: Price dropped below the ATR-based lower threshold.
+                       0: Price stayed within the ATR-based thresholds.
+                       1: Price exceeded the ATR-based upper threshold.
+    """
+    if close_col not in df.columns:
+        raise ValueError(f"Column '{close_col}' not found in DataFrame.")
+
+    if high_col not in df.columns:
+        raise ValueError(f"Column '{high_col}' not found in DataFrame.")
+
+    if low_col not in df.columns:
+        raise ValueError(f"Column '{low_col}' not found in DataFrame.")
+
+    df = df.copy()
+
+    # Compute ATR
+    df["ATR"] = talib.ATR(df[high_col], df[low_col], df[close_col], timeperiod=atr_period)
+
+    # Define dynamic thresholds based on ATR
+    upper_threshold = df[close_col] + atr_mult_long * df["ATR"]
+    lower_threshold = df[close_col] - atr_mult_short * df["ATR"]
+
+    df["Label_ATR"] = 0
+
+    # Label based on future movement against ATR thresholds
+    for i in range(len(df) - horizon):
+        future_prices = df.loc[i + 1 : i + horizon, close_col]
+        if any(future_prices > upper_threshold[i]):
+            df.loc[i, "Label_ATR"] = 1
+        elif any(future_prices < lower_threshold[i]):
+            df.loc[i, "Label_ATR"] = -1
+
+    return pd.Series(
+        df["Label_ATR"].values,
+        index=df.index,
+        name=f"target_h{horizon}atrp{atr_period}atrl{atr_mult_long}atrs{atr_mult_short}",
+    )
+
+
+ATRThresholdTargetTransformer = target_transformer_wrapper(atr_threshold_labeler_func)
