@@ -34,33 +34,75 @@ def target_transformer_wrapper(transform_function):
     return WrappedTargetTransformer
 
 
+def target_transformer_wrapper_df(transform_function):
+    """
+    A wrapper that converts a target transformation function that depends on a full DataFrame
+    into a scikit-learn-compatible transformer (using both X and y).
+
+    The transform_function must accept (df, **kwargs) where df includes target and predictors.
+
+    Returns:
+        A scikit-learn-compatible Transformer that can be used in pipeline.
+    """
+
+    class WrappedTargetTransformer(BaseEstimator, TransformerMixin):
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.close_col = kwargs.get("close_col", "close")
+
+        def fit(self, X, y=None):
+            if y is None:
+                raise ValueError("y cannot be None when using a DataFrame-aware transformer.")
+            return self
+
+        def transform(self, X, y=None):
+            if y is None:
+                raise ValueError("y cannot be None when using a DataFrame-aware transformer.")
+            if not isinstance(y, pd.Series):
+                raise TypeError("Input must be a pandas Series")
+            df = X.copy()
+            df[self.close_col] = y.values if hasattr(y, "values") else y
+            labels = transform_function(df, **self.kwargs)
+            return labels
+
+        def fit_transform(self, X, y=None, **fit_params):
+            self.fit(X, y)
+            return self.transform(X, y)
+
+    return WrappedTargetTransformer
+
+
 def fixed_horizon_labeler_func(
-    df: pd.DataFrame,
+    y: pd.Series | np.ndarray | list,
     horizon: int,
     up_threshold: float,
     down_threshold: float,
-    close_col: str = "close",
-) -> pd.Series:
+) -> pd.Series | np.ndarray:
     """
-    Labels time series data based on fixed-time horizon returns with asymmetrical thresholds.
+    Labels time series y based on fixed-time horizon returns with asymmetrical thresholds.
 
     Args:
-        df (pd.DataFrame): DataFrame containing price data.
+        y (pd.Series, np.ndarray, or list): Input price y.
         horizon (int): Number of future bars to calculate returns.
         up_threshold (float): Threshold for classifying positive returns.
         down_threshold (float): Threshold for classifying negative returns.
-        close_col (str): Column name of the price data.
 
     Returns:
-        pd.Series: A Series of labels (-1, 0, or 1) indexed to the original DataFrame.
-                   -1: Negative return below the down_threshold.
-                    0: Return within the threshold range.
-                    1: Positive return above the up_threshold.
+        pd.Series or np.ndarray: A 1D object of labels (-1, 0, or 1).
+                                  -1: Negative return below the down_threshold.
+                                   0: Return within the threshold range.
+                                   1: Positive return above the up_threshold.
+                                  Returns a pd.Series if input was a pd.Series, otherwise np.ndarray.
     """
-    if close_col not in df.columns:
-        raise ValueError(f"Column '{close_col}' not found in DataFrame.")
+    if isinstance(y, pd.Series):
+        prices = y
+        is_series = True
+    elif isinstance(y, (np.ndarray, list)):
+        prices = pd.Series(y)
+        is_series = False
+    else:
+        raise ValueError("Input must be a pandas Series, numpy array, or list.")
 
-    prices = df[close_col]
     future_returns = (prices.shift(-horizon) - prices) / prices  # % return
 
     labels = np.where(
@@ -69,46 +111,54 @@ def fixed_horizon_labeler_func(
         np.where(future_returns < -down_threshold, -1, 0),
     )
 
-    return pd.Series(labels, index=df.index, name=f"target_h{horizon}up{up_threshold}down{down_threshold}")
+    if is_series:
+        return pd.Series(labels, index=prices.index, name=f"target_h{horizon}up{up_threshold}down{down_threshold}")
+    else:
+        return labels
 
 
 FixedHorizonTargetTransformer = target_transformer_wrapper(fixed_horizon_labeler_func)
 
 
 def trade_outcome_labeler_func(
-    df: pd.DataFrame, horizon: int, tp: float, sl: float, close_col: str = "close"
-) -> pd.Series:
+    y: pd.Series | np.ndarray | list, horizon: int, tp: float, sl: float
+) -> pd.Series | np.ndarray:
     """
     Labels trading data based on simulated trade outcomes.
 
     Args:
-        df (pd.DataFrame): DataFrame containing price data with a 'Close' column.
+        y (pd.Series, np.ndarray, or list): Input price data.
         horizon (int): Number of future bars to simulate the trade.
         tp (float): Take-profit threshold as a percentage (e.g., 0.02 for 2%).
         sl (float): Stop-loss threshold as a percentage (e.g., 0.01 for 1%).
 
     Returns:
-        pd.Series: A Series of labels (-1, 0, or 1) indexed to the original DataFrame:
-                   -1: Stop-loss hit within the horizon.
-                    0: Neither take-profit nor stop-loss hit within the horizon.
-                    1: Take-profit hit within the horizon.
+        pd.Series or np.ndarray: A 1D object of labels (-1, 0, or 1):
+                                 -1: Stop-loss hit within the horizon.
+                                  0: Neither take-profit nor stop-loss hit within the horizon.
+                                  1: Take-profit hit within the horizon.
+                                 Returns a pd.Series if input was a pd.Series, otherwise np.ndarray.
     """
-    if close_col not in df.columns:
-        raise ValueError(f"Column '{close_col}' not found in DataFrame.")
+    if isinstance(y, pd.Series):
+        prices = y.values
+        is_series = True
+    elif isinstance(y, (np.ndarray, list)):
+        prices = np.array(y)
+        is_series = False
+    else:
+        raise ValueError("Input must be a pandas Series, numpy array, or list.")
 
-    close_prices = df[close_col].values
     labels = []
-
-    for i in range(len(df)):
-        entry_price = close_prices[i]
+    for i in range(len(prices)):
+        entry_price = prices[i]
         tp_price = entry_price * (1 + tp)
         sl_price = entry_price * (1 - sl)
         label = 0
 
         for j in range(1, horizon + 1):
-            if i + j >= len(df):
+            if i + j >= len(prices):
                 break
-            future_price = close_prices[i + j]
+            future_price = prices[i + j]
             if future_price >= tp_price:
                 label = 1
                 break
@@ -118,7 +168,10 @@ def trade_outcome_labeler_func(
 
         labels.append(label)
 
-    return pd.Series(labels, index=df.index, name=f"target_h{horizon}tp{tp}sl{sl}")
+    if is_series:
+        return pd.Series(labels, index=y.index, name=f"target_h{horizon}tp{tp}sl{sl}")
+    else:
+        return np.array(labels)
 
 
 TradeOutcomeTargetTransformer = target_transformer_wrapper(trade_outcome_labeler_func)
@@ -171,11 +224,11 @@ def atr_threshold_labeler_func(
 
     # Label based on future movement against ATR thresholds
     for i in range(len(df) - horizon):
-        future_prices = df.loc[i + 1 : i + horizon, close_col]
-        if any(future_prices > upper_threshold[i]):
-            df.loc[i, "Label_ATR"] = 1
-        elif any(future_prices < lower_threshold[i]):
-            df.loc[i, "Label_ATR"] = -1
+        future_prices = df.iloc[i + 1 : i + 1 + horizon][close_col]
+        if any(future_prices > upper_threshold.iloc[i]):
+            df.loc[df.index[i], "Label_ATR"] = 1
+        elif any(future_prices < lower_threshold.iloc[i]):
+            df.loc[df.index[i], "Label_ATR"] = -1
 
     return pd.Series(
         df["Label_ATR"].values,
@@ -184,4 +237,4 @@ def atr_threshold_labeler_func(
     )
 
 
-ATRThresholdTargetTransformer = target_transformer_wrapper(atr_threshold_labeler_func)
+ATRThresholdTargetTransformer = target_transformer_wrapper_df(atr_threshold_labeler_func)
