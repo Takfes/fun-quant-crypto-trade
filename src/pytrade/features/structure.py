@@ -3,7 +3,7 @@ from calendar import c
 import numpy as np
 import pandas as pd
 from regex import P
-from scipy.signal import argrelextrema
+from scipy.signal import argrelextrema, find_peaks
 
 from pytrade.features.wrappers import transformer_wrapper
 
@@ -235,3 +235,81 @@ def pips_transformer_func(
 
 
 PipsTransformer = transformer_wrapper(pips_transformer_func)
+
+
+def find_peaks_transformer_func(
+    df: pd.DataFrame,
+    high_column: str = "high",
+    low_column: str = "low",
+    height: float | None | tuple[float, float] = None,
+    threshold: float | None | tuple[float, float] = None,
+    distance: int | None = None,
+    prominence: float | None | tuple[float, float] = None,
+    width: float | None | tuple[float, float] = None,
+    wlen: int | None = None,
+    rel_height: float = 0.5,
+    plateau_size: int | tuple[int, int] | None = None,
+) -> pd.DataFrame:
+    """
+    Identify local minima and maxima in a time series using the find_peaks function.
+
+    Parameters:
+    - df: DataFrame with the data.
+    - high_column: The column name to analyze for local maxima.
+    - low_column: The column name to analyze for local minima.
+    - height: Required height of peaks.
+    - threshold: Required threshold of peaks.
+    - distance: Required minimum horizontal distance (in samples) between peaks.
+    - prominence: Required prominence of peaks.
+    - width: Required width of peaks.
+    - wlen: Window length for peak detection.
+    - rel_height: Relative height for calculating the width of peaks.
+    - plateau_size: Size of the flat top of peaks.
+
+    Returns:
+    - df: DataFrame with added columns for local peaks and dips.
+    """
+    dfc = df.copy()
+
+    if high_column not in dfc.columns:
+        raise ValueError(f"Column '{high_column}' not found in DataFrame.")
+    if low_column not in dfc.columns:
+        raise ValueError(f"Column '{low_column}' not found in DataFrame.")
+
+    high_data = dfc[high_column].values
+    low_data = dfc[low_column].values
+
+    # Find local maxima
+    peaks_indices, _ = find_peaks(
+        high_data,
+        height=height,
+        threshold=threshold,
+        distance=distance,
+        prominence=prominence,
+        width=width,
+        wlen=wlen,
+        rel_height=rel_height,
+        plateau_size=plateau_size,
+    )
+
+    # Find local minima (invert the data)
+    dips_indices, _ = find_peaks(
+        -low_data,
+        height=height,
+        threshold=threshold,
+        distance=distance,
+        prominence=prominence,
+        width=width,
+        wlen=wlen,
+        rel_height=rel_height,
+        plateau_size=plateau_size,
+    )
+
+    # Add results to the DataFrame
+    dfc[f"{high_column}_local_peaks"] = pd.Series(dfc[high_column].iloc[peaks_indices], index=dfc.index[peaks_indices])
+    dfc[f"{low_column}_local_dips"] = pd.Series(dfc[low_column].iloc[dips_indices], index=dfc.index[dips_indices])
+
+    return dfc
+
+
+FindPeaksTransformer = transformer_wrapper(find_peaks_transformer_func)
