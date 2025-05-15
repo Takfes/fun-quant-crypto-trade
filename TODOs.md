@@ -7,3 +7,4 @@
 - create Volume-Weighted Moving Averages (VWMA) features
 - explore mtf analysis - how to incorporate relevant features
 - features.divergence -> distinguish between bullish and bearish divergence
+- features.structure -> local extrema - enhance with peak_prominences

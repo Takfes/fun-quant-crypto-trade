@@ -1,5 +1,8 @@
+from calendar import c
+
 import numpy as np
 import pandas as pd
+from regex import P
 from scipy.signal import argrelextrema
 
 from pytrade.features.wrappers import transformer_wrapper
@@ -147,3 +150,88 @@ def directional_change_transformer_func(
 
 
 DirectionalChangeTransformer = transformer_wrapper(directional_change_transformer_func)
+
+
+def pips_transformer_func(
+    df: pd.DataFrame, n_pips: int, dist_measure: int = 1, close: str = "close"
+) -> tuple[list[int], list[float]]:
+    """
+    Extracts PIPs (Perceptually Important Points) from a time series using one of three distance measures.
+
+    This function iteratively finds the most perceptually important points in the data,
+    starting from endpoints, based on how far a point deviates from its neighbors.
+
+    Args:
+        data (np.ndarray): 1D array of time series data.
+        n_pips (int): Number of PIPs to extract.
+        dist_measure (int): Distance measure to use.
+            1 = Euclidean distance
+            2 = Perpendicular distance
+            3 = Vertical distance
+
+    Returns:
+        tuple[list[int], list[float]]:
+            - pips_x: Indices of selected PIPs.
+            - pips_y: Corresponding values from `data` at those indices.
+    """
+    # Copy the DataFrame to avoid modifying the original
+    dfc = df.copy()
+
+    # Validate input parameters
+    if close not in dfc.columns:
+        raise ValueError(f"Column '{close}' not found in DataFrame.")
+
+    # Extract the data from the specified column
+    data = dfc[close].values
+
+    # Instantiate the output lists
+    pips_x = [0, len(data) - 1]  # Indices of first and last points
+    pips_y = [data[0], data[-1]]  # Corresponding values
+
+    for curr_point in range(2, n_pips):
+        max_dist = 0.0
+        max_dist_idx = -1
+        insert_index = -1
+
+        for k in range(0, curr_point - 1):
+            left_adj = k
+            right_adj = k + 1
+
+            time_diff = pips_x[right_adj] - pips_x[left_adj]
+            price_diff = pips_y[right_adj] - pips_y[left_adj]
+            slope = price_diff / time_diff
+            intercept = pips_y[left_adj] - pips_x[left_adj] * slope
+
+            for i in range(pips_x[left_adj] + 1, pips_x[right_adj]):
+                # Compute distance based on selected method
+                d = 0.0
+                if dist_measure == 1:
+                    # Euclidean distance
+                    d += ((pips_x[left_adj] - i) ** 2 + (pips_y[left_adj] - data[i]) ** 2) ** 0.5
+                    d += ((pips_x[right_adj] - i) ** 2 + (pips_y[right_adj] - data[i]) ** 2) ** 0.5
+                elif dist_measure == 2:
+                    # Perpendicular distance
+                    d = abs(slope * i + intercept - data[i]) / (slope**2 + 1) ** 0.5
+                else:
+                    # Vertical distance
+                    d = abs(slope * i + intercept - data[i])
+
+                # Track maximum distance point
+                if d > max_dist:
+                    max_dist = d
+                    max_dist_idx = i
+                    insert_index = right_adj
+
+        # Insert the new PIP into the lists at the correct position
+        pips_x.insert(insert_index, max_dist_idx)
+        pips_y.insert(insert_index, data[max_dist_idx])
+
+    # Convert output to dataframe format
+    dfc["preceptually_important_points"] = pd.Series(
+        pips_y, index=[dfc.index[i] for i in pips_x], name="preceptually_important_points"
+    )
+
+    return dfc
+
+
+PipsTransformer = transformer_wrapper(pips_transformer_func)
