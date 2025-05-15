@@ -1,5 +1,9 @@
+## TODOs
 
-- features.divergence -> distinguish between bullish and bearish divergence
 - create S/R and S/D features
-- create transformer to perform pct change over period of time
+- create model training pipeline
+- create backtrader strategy leveraging trained model
+- explore the threshold optimization & predict_proba calibration
+- create Volume-Weighted Moving Averages (VWMA) features
 - explore mtf analysis - how to incorporate relevant features
+- features.divergence -> distinguish between bullish and bearish divergence

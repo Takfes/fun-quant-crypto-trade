@@ -4,6 +4,34 @@ import talib
 from pytrade.features.wrappers import transformer_wrapper
 
 
+def pct_change_transformer_func(df: pd.DataFrame, column: str = "close", period: int | list = 1):
+    """
+    Applies a percentage change transformation to a DataFrame and generates
+    additional features based on the specified column.
+
+    Parameters:
+        df (pd.DataFrame): The input DataFrame containing the data.
+        column (str): The name of the column to calculate percentage changes for. Default is "close".
+        period (int | list): The time period(s) for calculating percentage changes. Default is 1.
+
+    Returns:
+        pd.DataFrame: A copy of the input DataFrame with the following additional columns:
+            - "{column}_pct_change_{period}": The percentage change of the specified column over the given period(s).
+    """
+
+    dfc = df.copy()
+    if isinstance(period, int):
+        period = [period]
+
+    for p in period:
+        dfc[f"{column}_pct_change_{p}"] = dfc[column].pct_change(periods=p)
+
+    return dfc
+
+
+PctChangeTransformer = transformer_wrapper(pct_change_transformer_func)
+
+
 def triple_sma_transformer_func(df, column="close", fast_period=10, medium_period=30, slow_period=100):
     """
     Applies a triple simple moving average (SMA) transformation to a DataFrame and generates
