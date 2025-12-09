@@ -1,8 +1,8 @@
 [project]
-name = "pytrade"
+name = "fun-quant-crypto-trade"
 version = "0.0.1"
 description = "This is a template repository for Python projects that use uv for their dependency management."
-authors = [{ name = "takis fessas", email = "fpgmaas@gmail.com" }]
+authors = [{ name = "Takmers", email = "takmers@gmail.com" }]
 readme = "README.md"
 keywords = ['python']
 requires-python = ">=3.12,<4.0"
@@ -60,11 +60,13 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["pytrade"]
+# packages = ["pytrade", "quanttak"]
 # packages = "find:"
 package-dir = { "" = "src" }
 # py-modules = ["src"]
 
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.mypy]
 files = ["src"]
