@@ -1,0 +1,30 @@
+{
+  // Ensures when you run code interactively (e.g., using "Run Selection/Line in Python Terminal"),
+  // VSCode changes the working directory to the folder of the active Python file.
+  "python.terminal.executeInFileDir": true,
+
+  // Makes the Jupyter interactive window start in the directory of the current notebook or script.
+  "jupyter.notebookFileRoot": "${fileDirname}",
+
+  // Enable Ruff for Python files and notebooks
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+
+  // Enable formatting for notebooks
+  "notebook.formatOnSave.enabled": true,
+  "notebook.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+  // Coding Agent specific settings
+  "chat.mcp.discovery.enabled": {
+    "claude-desktop": false,
+    "windsurf": false,
+    "cursor-global": false,
+    "cursor-workspace": false
+  }, // Disable auto-discovery of MCP servers - if enabled, it will fetch servers from Claude
+  "chat.promptFiles": true,
+  // "chat.promptFilesLocations": [".github/prompts"],
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.mcp.autostart": "never"
+}
