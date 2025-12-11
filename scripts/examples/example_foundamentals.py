@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from quanttak.data import get_fundamentals_yf, get_symbols
+from pyquants.data import get_fundamentals_yf, get_symbols
 
 """
 # ==============================================================

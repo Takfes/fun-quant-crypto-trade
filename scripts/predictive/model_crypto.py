@@ -21,8 +21,8 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeries
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-from quanttak.features import FeatureEngineer
-from quanttak.targets import lookahead_downsampling, make_target_rtns, make_target_tpsl
+from pyquants.features import FeatureEngineer
+from pyquants.targets import lookahead_downsampling, make_target_rtns, make_target_tpsl
 
 
 def evaluate_model(model, X_train, y_train, X_test, y_test):

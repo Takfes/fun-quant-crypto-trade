@@ -43,7 +43,7 @@ df_a_long_adjclose = df_a_long[["ticker", "Adj Close"]]
 # Get Fundamentals
 # ===============================================
 
-from quanttak.func import get_fundamentals_yf
+from pyquants.func import get_fundamentals_yf
 
 # Get Fundamentals Data
 fundamentals = [get_fundamentals_yf(symbol) for symbol in ticker_a]
