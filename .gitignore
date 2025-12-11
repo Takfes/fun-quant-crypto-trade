@@ -1,3 +1,5 @@
+# Custom ignores
+.DS_Store
 *.whl
 *.csv
 *.pkl

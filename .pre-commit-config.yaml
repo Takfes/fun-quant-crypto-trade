@@ -1,49 +1,100 @@
 repos:
-  # Adding custom cleaning utility
-  - repo: local
+  # Python linting and formatting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.12.7"
     hooks:
-      - id: clean-directory
-        name: clean directory
-        entry: >
-          bash -c 'clean() {
-            local directory="$1";
-            if [ ! -d "$directory" ]; then
-              echo "Directory '\''$directory'\'' not found";
-              return;
-            fi;
-            find "$directory" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null;
-            find "$directory" -type f -name ".DS_Store" -exec rm -f {} + 2>/dev/null;
-            find "$directory" -type d -name "catboost_info" -exec rm -r {} + 2>/dev/null;
-            find "$directory" -type d -name ".ruff_cache" -exec rm -r {} + 2>/dev/null;
-            find "$directory" -type d -name ".ipynb_checkpoints" -exec rm -r {} + 2>/dev/null;
-          }; clean .'
-        language: system
-        always_run: true
+      - id: ruff-check
+        name: "🐍 Python · Lint code with (ruff)"
+        args: [--fix, --exit-non-zero-on-fix, --config=pyproject.toml, --output-format=concise]
+      - id: ruff-format
+        name: "🐍 Python · Format code with (ruff)"
+        args: [--config=pyproject.toml]
+      - id: ruff-check
+        name: "📓 Jupyter · Lint notebooks with (ruff)"
+        args: [--fix]
+        files: \.ipynb$
 
+  # Python docstring coverage
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0  # Updated to latest version
+    hooks:
+      - id: interrogate
+        name: "📚 Python · Check docstring coverage (interrogate)"
+        # Removed --config=pyproject.toml as the section is missing in pyproject.toml
+        # args: [--quiet] 
+        files: \.py$
+        types: [python]
+
+  # Python dependency analysis
+  - repo: https://github.com/fpgmaas/deptry
+    rev: "0.20.0"  # Fixed with actual version
+    hooks:
+      - id: deptry
+        name: "📦 Python · Analyze dependencies (deptry)"
+        args: ["--ignore", "DEP001,DEP003,DEP004"]
+
+  # Security scanning for hardcoded secrets
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+        name: "🔒 Security · Scan for hardcoded secrets (gitleaks)"
+        args : ["--report-format=table", "--redact"]
+
+  # Standard pre-commit hooks for file validation
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v5.0.0"
     hooks:
       - id: check-case-conflict
+        name: "📁 Files · Check filename case conflicts (pre-commit)"
       - id: check-merge-conflict
-      - id: check-toml
-      - id: check-yaml
-      - id: check-json
-        exclude: ^.devcontainer/devcontainer.json|\.ipynb$
-      - id: pretty-format-json
-        exclude: ^.devcontainer/devcontainer.json|\.ipynb$
-        args: [--autofix, --no-sort-keys]
+        name: "🔀 Git · Check for merge conflict markers (pre-commit)"
       - id: end-of-file-fixer
+        name: "📄 Files · Ensure files end with newline (pre-commit)"
       - id: trailing-whitespace
+        name: "🔤 Files · Remove trailing whitespace (pre-commit)"
+        args: [--markdown-linebreak-ext=md]
       - id: check-added-large-files
+        name: "📦 Files · Check for large files (>500KB) (pre-commit)"
+        args: [--maxkb=500]
       - id: mixed-line-ending
+        name: "📄 Files · Fix mixed line endings (pre-commit)"
+        args: [--fix=auto]
+      - id: check-json
+        name: "📋 JSON · Validate syntax (pre-commit)"
+        exclude: \.ipynb$
+      - id: pretty-format-json
+        name: "📋 JSON · Format and prettify (pre-commit)"
+        exclude: \.ipynb$
+        args: [--autofix, --no-sort-keys, --indent=2]
+      - id: check-toml
+        name: "⚙️  TOML · Validate syntax (pre-commit)"
+      - id: check-yaml
+        name: "📄 YAML · Validate syntax (pre-commit)"
+      - id: check-xml
+        name: "🏷️  XML · Validate syntax (pre-commit)"
+      - id: check-executables-have-shebangs
+        name: "🔧 Scripts · Check executable files have shebangs (pre-commit)"
+      - id: check-shebang-scripts-are-executable
+        name: "🔧 Scripts · Check shebang scripts are executable (pre-commit)"
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.11.5"
+  # Local hooks for custom cleaning utilities (macOS/Linux compatible)
+  - repo: local
     hooks:
-      - id: ruff
-        args: [--exit-non-zero-on-fix]
-      - id: ruff-format
-      - id: ruff
-        name: ruff-notebooks
-        args: [--fix]
-        files: \.ipynb$
+      - id: clean-cache-files
+        name: "🧹 Cleanup · Remove cache and temporary files (custom)"
+        entry: bash -c
+        args:
+          - |
+            echo "Cleaning cache and temporary files..."
+            # Use -prune to skip .venv directory for speed
+            find . -name ".venv" -prune -o -type d -name "__pycache__" -exec rm -rf {} +
+            find . -name ".venv" -prune -o -type f -name ".DS_Store" -exec rm -f {} +
+            find . -name ".venv" -prune -o -type d -name "catboost_info" -exec rm -rf {} +
+            find . -name ".venv" -prune -o -type d -name ".ruff_cache" -exec rm -rf {} +
+            find . -name ".venv" -prune -o -type d -name ".ipynb_checkpoints" -exec rm -rf {} +
+            find . -name ".venv" -prune -o -type d -name "*.egg-info" -exec rm -rf {} +
+            echo "Cache cleanup completed."
+        language: system
+        always_run: true
+        pass_filenames: false
