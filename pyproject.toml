@@ -1,7 +1,7 @@
 [project]
-name = "fun-quant-crypto-trade"
+name = "quantyx"
 version = "0.0.1"
-description = "This is a template repository for Python projects that use uv for their dependency management."
+description = "This is a quantitative crypto trading library for Python."
 authors = [{ name = "Takmers", email = "takmers@gmail.com" }]
 readme = "README.md"
 keywords = ['python']
@@ -10,18 +10,13 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "ccxt>=4.4.80",
-    "ipykernel>=6.29.5",
     "matplotlib>=3.10.3",
-    "nbformat>=5.10.4",
     "plotly>=6.0.1",
     "python-binance>=1.0.28",
     "python-dotenv>=1.1.0",
@@ -31,9 +26,7 @@ dependencies = [
     "yfinance>=0.2.59",
     "backtrader>=1.9.78.123",
     "pandas>=2.2.3",
-    "pandas-ta>=0.3.14b0",
     "ta>=0.11.0",
-    "lxml>=6.0.2",
     "quantstats>=0.0.77",
 ]
 
@@ -53,6 +46,8 @@ dev = [
     "mkdocs-material>=8.5.10",
     "mkdocstrings[python]>=0.26.1",
     "nbqa>=1.9.1",
+    "deptry>=0.24.0",
+    "ipykernel>=7.1.0",
 ]
 
 [build-system]
@@ -128,7 +123,7 @@ ignore = [
     # DoNotAssignLambda
     "E731",
     # Ignore unused import warnings
-    "F401",
+    # "F401",
     # Avoid specifying long messages outside the exception class
     "TRY003",
     # Prefer `TypeError` exception for invalid type

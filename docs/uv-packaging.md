@@ -4,7 +4,7 @@
 
 **Distribution** (what `pip list` shows):
 - The installable unit managed by pip/uv
-- Defined by `[project] name = "fun-quant-crypto-trade"`
+- Defined by `[project] name = "quantyx"`
 - Has one version number
 - Shows up in `uv pip list`
 
@@ -15,21 +15,27 @@
 - Can have multiple packages per distribution
 
 ```
-📦 fun-quant-crypto-trade (distribution)
+📦 quantyx (distribution)
 ├── 📁 pytrade (package)
-└── 📁 quanttak (package)
+├── 📁 pyquants (package)
+└── 📁 pyfolio (package)
 ```
 
 **Result:**
 ```bash
-uv pip list              # Shows: fun-quant-crypto-trade
-import pytrade           # ✅ Works
-import quanttak          # ✅ Works
+uv pip list        # Shows: quantyx
+```
+
+```python
+import pyfolio     # ✅ Works
+import pyquants    # ✅ Works
+import pytrade     # ✅ Works
 ```
 
 ```bash
+python -c "import pyfolio; print(pyfolio.__file__)"
+python -c "import pyquants; print(pyquants.__file__)"
 python -c "import pytrade; print(pytrade.__file__)"
-python -c "import quanttak; print(quanttak.__file__)"
 ```
 
 ## Editable Mode (`-e`)
@@ -127,14 +133,14 @@ python -c "import pytrade; import quanttak; print('✅')"
 
 ```toml
 [project]
-name = "fun-quant-crypto-trade"        # Distribution name (pip list)
+name = "quantyx"        # Distribution name (pip list)
 dependencies = [...]                    # Runtime deps
 
 [project.optional-dependencies]         # Standard extras
 dev = [...]
 
 [tool.setuptools]
-packages = ["pytrade", "quanttak"]      # What you can import
+packages = ["pytrade", "pyquants" ,"pyfolio"]      # What you can import
 package-dir = {"" = "src"}              # Where packages live
 ```
 
