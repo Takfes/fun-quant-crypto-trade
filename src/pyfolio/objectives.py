@@ -7,7 +7,7 @@ including risk-adjusted returns, downside protection, and diversification metric
 import numpy as np
 import pandas as pd
 
-from .metrics import portfolio_downside_risk, portfolio_return, portfolio_risk
+from .stats import portfolio_downside_risk, portfolio_return, portfolio_risk
 
 
 def sharpe_ratio_objective(weights: np.ndarray, returns: pd.DataFrame, risk_free_rate: float = 0.0) -> float:

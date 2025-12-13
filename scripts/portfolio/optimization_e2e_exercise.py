@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 
-from pyfolio.metrics import compute_statistics
-from pyfolio.optimization import PortfolioOptimizer
-from pyfolio.plotting import plot_risk_return_scatter
-from pyfolio.stochastic import generate_random_portfolios
-from pyfolio.utils import get_tickers_data
+from pyfolio.data import get_tickers_data
+from pyfolio.optimizer import PortfolioOptimizer
+from pyfolio.plots import plot_risk_return_scatter
+from pyfolio.simulation import generate_random_portfolios
+from pyfolio.stats import compute_statistics
 
 START = "2020-01-01"
 END = "2025-11-30"

@@ -22,7 +22,7 @@ def get_sp500_tickers() -> pd.DataFrame:
     return sp500
 
 
-def get_tickers_data(tickers: list[str], start: str, end: str) -> pd.DataFrame:
+def get_ticker_returns(tickers: list[str], start: str, end: str) -> pd.DataFrame:
     """
     Download historical price data and compute returns.
 
@@ -58,7 +58,7 @@ def get_sim_daily() -> pd.DataFrame:
         index_col=0,
         engine="python",
     ).rename(columns={"Mkt-RF": "eMKT"})[["eMKT", "RF"]]
-    return df
+    return df / 100
 
 
 def get_ff3_daily() -> pd.DataFrame:
@@ -79,7 +79,7 @@ def get_ff3_daily() -> pd.DataFrame:
         index_col=0,
         engine="python",
     ).rename(columns={"Mkt-RF": "eMKT"})
-    return df
+    return df / 100
 
 
 def get_ch4_daily() -> pd.DataFrame:
@@ -114,7 +114,7 @@ def get_ch4_daily() -> pd.DataFrame:
     )
     df = ff3.join(mom, how="inner")
     df = df[["Mkt-RF", "SMB", "HML", "Mom", "RF"]].rename(columns={"Mkt-RF": "eMKT", "Mom": "MOM"})
-    return df
+    return df / 100
 
 
 def get_ff5_daily() -> pd.DataFrame:
@@ -135,4 +135,4 @@ def get_ff5_daily() -> pd.DataFrame:
         index_col=0,
         engine="python",
     ).rename(columns={"Mkt-RF": "eMKT"})
-    return df
+    return df / 100
