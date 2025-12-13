@@ -7,6 +7,36 @@ statistical metrics for portfolio analysis.
 import pandas as pd
 import yfinance as yf
 
+# S&P 500 Sector Indices
+SECTOR_INDICES = {
+    "Energy": "^SP500-10",
+    "Materials": "^SP500-15",
+    "Industrials": "^SP500-20",
+    "Consumer Discretionary": "^SP500-25",
+    "Consumer Staples": "^SP500-30",
+    "Health Care": "^SP500-35",
+    "Financials": "^SP500-40",
+    "Information Technology": "^SP500-45",
+    "Communication Services": "^SP500-50",
+    "Utilities": "^SP500-55",
+    "Real Estate": "^SP500-60",
+}
+
+# S&P 500 Sector ETFs
+SECTOR_ETFS = {
+    "Technology": "XLK",
+    "Financials": "XLF",
+    "Health Care": "XLV",
+    "Consumer Discretionary": "XLY",
+    "Consumer Staples": "XLP",
+    "Industrials": "XLI",
+    "Utilities": "XLU",
+    "Energy": "XLE",
+    "Materials": "XLB",
+    "Real Estate": "XLRE",
+    "Communication Services": "XLC",
+}
+
 
 def get_sp500_tickers() -> pd.DataFrame:
     """
@@ -36,6 +66,69 @@ def get_ticker_returns(tickers: list[str], start: str, end: str) -> pd.DataFrame
     """
     rawdata = yf.download(tickers, start=start, end=end)
     closedata = rawdata["Close"].copy()
+    returnsdata = closedata.pct_change().dropna()
+    return returnsdata
+
+
+def get_sector_indices_returns(start: str, end: str) -> pd.DataFrame:
+    """
+    Fetch historical returns for S&P 500 Sector Indices.
+
+    Args:
+        start: Start date (YYYY-MM-DD).
+        end: End date (YYYY-MM-DD).
+
+    Returns:
+        DataFrame of daily returns with sector names as columns.
+    """
+    tickers = list(SECTOR_INDICES.values())
+    # Invert dictionary to map tickers back to sector names
+    ticker_to_sector = {v: k for k, v in SECTOR_INDICES.items()}
+
+    rawdata = yf.download(tickers, start=start, end=end, progress=False)
+
+    # Handle case where only one ticker is returned (series vs dataframe)
+    if len(tickers) == 1:
+        closedata = rawdata["Close"].to_frame()
+        closedata.columns = tickers
+    else:
+        closedata = rawdata["Close"].copy()
+
+    # Rename columns from tickers to sector names
+    closedata.rename(columns=ticker_to_sector, inplace=True)
+    closedata.dropna(inplace=True, axis=1)
+
+    returnsdata = closedata.pct_change().dropna()
+    return returnsdata
+
+
+def get_sector_etf_returns(start: str, end: str) -> pd.DataFrame:
+    """
+    Fetch historical returns for S&P 500 Sector ETFs.
+
+    Args:
+        start: Start date (YYYY-MM-DD).
+        end: End date (YYYY-MM-DD).
+
+    Returns:
+        DataFrame of daily returns with sector names as columns.
+    """
+    tickers = list(SECTOR_ETFS.values())
+    # Invert dictionary to map tickers back to sector names
+    ticker_to_sector = {v: k for k, v in SECTOR_ETFS.items()}
+
+    rawdata = yf.download(tickers, start=start, end=end, progress=False)
+
+    # Handle case where only one ticker is returned
+    if len(tickers) == 1:
+        closedata = rawdata["Close"].to_frame()
+        closedata.columns = tickers
+    else:
+        closedata = rawdata["Close"].copy()
+
+    # Rename columns from tickers to sector names
+    closedata.rename(columns=ticker_to_sector, inplace=True)
+
     returnsdata = closedata.pct_change().dropna()
     return returnsdata
 
