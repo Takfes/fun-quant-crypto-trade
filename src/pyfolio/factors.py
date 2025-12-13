@@ -33,6 +33,11 @@ class LinearFactorModel:
     """
 
     def __init__(self, rf_col="RF"):
+        """Initialize the linear factor model.
+
+        Args:
+            rf_col: Name of the risk-free rate column in the factors DataFrame.
+        """
         self.rf_col = rf_col
         self.alpha = None  # (N,)
         self.betas = None  # (N, K)
@@ -45,7 +50,7 @@ class LinearFactorModel:
     # ------------------------------------------------------------
     # 1) Fit factor model
     # ------------------------------------------------------------
-    def fit(self, asset_returns: pd.DataFrame, factors: pd.DataFrame):
+    def fit(self, asset_returns: pd.DataFrame, factors: pd.DataFrame, fit_intercept=True):
         """
         asset_returns : T x N DataFrame (decimal returns)
         factors       : T x (K + RF) DataFrame (decimal returns)
@@ -61,7 +66,7 @@ class LinearFactorModel:
 
         X = df[self.factor_cols].values  # T x K
 
-        reg = LinearRegression(fit_intercept=True)
+        reg = LinearRegression(fit_intercept=fit_intercept)
         reg.fit(X, Y)
 
         self.alpha = reg.intercept_  # (N,)

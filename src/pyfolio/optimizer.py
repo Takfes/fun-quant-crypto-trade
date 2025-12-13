@@ -12,7 +12,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from . import objectives
-from .metrics import portfolio_return, portfolio_risk
+from .stats import portfolio_return, portfolio_risk
 
 
 @dataclass
@@ -50,6 +50,14 @@ class PortfolioOptimizer:
     def __init__(
         self, returns: pd.DataFrame, risk_free_rate: float = 0.0, min_weight: float = 0.0, max_weight: float = 1.0
     ):
+        """Initialize the portfolio optimizer.
+
+        Args:
+            returns: DataFrame of asset returns.
+            risk_free_rate: Annual risk-free rate (default: 0.0).
+            min_weight: Minimum weight per asset (default: 0.0).
+            max_weight: Maximum weight per asset (default: 1.0).
+        """
         self.returns = returns
         self.risk_free_rate = risk_free_rate
         self.min_weight = min_weight

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from pyfolio.data import get_tickers_data
+from pyfolio.data import get_ticker_returns
 from pyfolio.optimizer import PortfolioOptimizer
 from pyfolio.plots import plot_risk_return_scatter
 from pyfolio.simulation import generate_random_portfolios
@@ -13,7 +13,6 @@ NUM_PORTFOLIOS = 10_000
 
 tickers = [
     "AAPL",
-    "GE",
     "MSFT",
     "WMB",
     "TSLA",
@@ -23,7 +22,7 @@ tickers = [
 
 def main():
     print("Fetching data...")
-    returns = get_tickers_data(tickers, START, END)
+    returns = get_ticker_returns(tickers, START, END)
 
     print("Computing statistics...")
     stats_df = compute_statistics(returns)
