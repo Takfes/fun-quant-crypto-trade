@@ -4,6 +4,11 @@ install: ## Install the virtual environment and install the pre-commit hooks
 	@uv sync
 	@uv run pre-commit install
 
+.PHONY: lock
+lock: ## Update the lock file
+	@echo "🔒 Updating lock file with uv lock"
+	@uv lock
+
 .PHONY: check
 check: ## Run code quality tools.
 	@echo "🚀 Checking lock file consistency with 'pyproject.toml'"
@@ -12,6 +17,23 @@ check: ## Run code quality tools.
 	@uv run pre-commit run -a
 	@echo "🚀 Static type checking: Running mypy"
 	@uv run mypy
+
+.PHONY: venv
+venv: ## Show Python version, venv path, and installed packages
+	@echo "🔍 Python environment information:"
+	@uv run python --version
+	@uv run python -c "import sys; print('Virtual env path:', sys.prefix)"
+	@echo "📦 Installed packages:"
+	@uv run pip list
+
+.PHONY: reset-venv
+reset-venv: ## Reset the virtual environment (requires confirmation)
+	@echo "⚠️  This will delete your .venv and reinstall everything."
+	@printf "Are you sure? [y/N] " && read ans && [ "${ans:-N}" = "y" ]
+	@echo "🚀 Resetting environment..."
+	@rm -rf .venv
+	@uv sync
+	@uv run pre-commit install
 
 .PHONY: pre-commit
 pre-commit: ## Run pre-commit hooks on staged files (as if committing)

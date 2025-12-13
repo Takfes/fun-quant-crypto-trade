@@ -20,8 +20,7 @@ repos:
     hooks:
       - id: interrogate
         name: "📚 Python · Check docstring coverage (interrogate)"
-        # Removed --config=pyproject.toml as the section is missing in pyproject.toml
-        args: [-v]
+        args: [--config=pyproject.toml, -v] #, --quiet]
         files: \.py$
         types: [python]
 
