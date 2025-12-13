@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 
+from pyfolio.metrics import compute_statistics
 from pyfolio.optimization import PortfolioOptimizer
 from pyfolio.plotting import plot_risk_return_scatter
 from pyfolio.stochastic import generate_random_portfolios
-from pyfolio.utils import compute_statistics, get_data
+from pyfolio.utils import get_tickers_data
 
 START = "2020-01-01"
 END = "2025-11-30"
@@ -22,7 +23,7 @@ tickers = [
 
 def main():
     print("Fetching data...")
-    returns = get_data(tickers, START, END)
+    returns = get_tickers_data(tickers, START, END)
 
     print("Computing statistics...")
     stats_df = compute_statistics(returns)
