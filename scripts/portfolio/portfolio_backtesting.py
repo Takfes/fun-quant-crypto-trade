@@ -14,7 +14,7 @@ def get_data():
     """Fetch some sample data for backtesting."""
     tickers = ["SPY", "TLT", "GLD"]
     print(f"Fetching data for {tickers}...")
-    # yfinance returns a MultiIndex by default for multiple tickers, we want just the Close prices
+    # Fetch data starting from 2020 to allow for warm-up period
     data = yf.download(tickers, start="2020-01-01", end="2023-12-31", progress=False)["Close"]
     return data
 
@@ -49,21 +49,28 @@ def main():
     # Equal weights for 3 assets
     initial_weights = dict.fromkeys(prices.columns, 1 / 3)
 
+    # Define a common start date for the simulation to ensure apples-to-apples comparison
+    # We start simulation in 2021, using 2020 data for the initial lookback of Walk-Forward
+    sim_start_date = "2021-01-01"
+    print(f"\nStarting all simulations from: {sim_start_date}")
+
     print("\n--- Running Buy and Hold ---")
-    bnh_result = backtester.run_buy_and_hold(prices, initial_weights)
+    bnh_result = backtester.run_buy_and_hold(prices, initial_weights, start_date=sim_start_date)
     print("Buy & Hold Metrics:", bnh_result.metrics)
 
     print("\n--- Running Fixed Allocation (Rebalanced Monthly) ---")
-    fixed_result = backtester.run_fixed_allocation(prices, initial_weights, rebalance_freq="ME")
+    fixed_result = backtester.run_fixed_allocation(
+        prices, initial_weights, rebalance_freq="ME", start_date=sim_start_date
+    )
     print("Fixed Allocation Metrics:", fixed_result.metrics)
 
     print("\n--- Running Walk-Forward Optimization (Max Sharpe) ---")
-    # We use a shorter lookback for this example to ensure we have enough data
     wf_result = backtester.run_walk_forward(
         prices,
         optimizer_func=max_sharpe_optimizer,
         lookback_window=126,  # ~6 months
         rebalance_freq="ME",
+        start_date=sim_start_date,
     )
     print("Walk-Forward Metrics:", wf_result.metrics)
 
@@ -98,17 +105,32 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # Plot Weights for each strategy
-    # Buy & Hold (Drift visualization)
-    bnh_result.plot_weights(title="Buy & Hold: Weight Drift Over Time")
+    # Drawdown Comparison
+    plt.figure(figsize=(12, 6))
+    # We can manually plot drawdowns or use the helper method for individual ones
+    # Here we plot combined drawdowns for comparison
+    for name, res in [("Buy & Hold", bnh_result), ("Fixed", fixed_result), ("Walk-Forward", wf_result)]:
+        series = res.equity_curve["Portfolio Value"]
+        dd = (series - series.cummax()) / series.cummax()
+        plt.plot(dd.index, dd, label=name)
+
+    plt.title("Drawdown Comparison")
+    plt.ylabel("Drawdown (%)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.fill_between(dd.index, 0, -1, color="gray", alpha=0.05)  # Visual baseline
+    plt.tight_layout()
     plt.show()
 
-    # Fixed Allocation (Sawtooth pattern visualization)
-    fixed_result.plot_weights(title="Fixed Allocation: Rebalancing Effects")
+    # Individual Strategy Analysis (Walk-Forward)
+    print("\nDisplaying detailed analysis for Walk-Forward Strategy...")
+    wf_result.plot_weights(title="Walk-Forward: Dynamic Allocation")
     plt.show()
 
-    # Walk-Forward (Regime change visualization)
-    wf_result.plot_weights(title="Walk-Forward Optimization: Dynamic Allocation")
+    wf_result.plot_drawdown(title="Walk-Forward: Underwater Plot")
+    plt.show()
+
+    wf_result.plot_rolling_metrics(title="Walk-Forward: Rolling Sharpe (6-Month)")
     plt.show()
 
 
