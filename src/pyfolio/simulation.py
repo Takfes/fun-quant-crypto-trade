@@ -4,6 +4,9 @@ This module provides functions to generate random portfolio allocations
 for efficient frontier visualization and comparison.
 """
 
+from dataclasses import dataclass
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -42,6 +45,32 @@ def generate_random_portfolios(returns: pd.DataFrame, num_portfolios: int) -> tu
     return portfolio_risk, portfolio_returns
 
 
+@dataclass
+class BacktestResult:
+    """
+    Container for backtest results including equity curve, weights, and metrics.
+    """
+
+    equity_curve: pd.DataFrame
+    weights_history: pd.DataFrame
+    metrics: dict
+
+    def plot_weights(self, title: str = "Portfolio Weights Allocation"):
+        """Plot the historical weights as a stacked area chart."""
+        if self.weights_history.empty:
+            print("No weights history to plot.")
+            return
+
+        # Plotting
+        ax = self.weights_history.plot.area(figsize=(12, 6), title=title, alpha=0.8, stacked=True)
+        plt.ylabel("Allocation")
+        plt.xlabel("Date")
+        plt.margins(0, 0)
+        plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0.0)
+        plt.tight_layout()
+        return ax
+
+
 class Backtester:
     """
     A simple event-driven backtester for portfolio strategies.
@@ -49,234 +78,6 @@ class Backtester:
 
     def __init__(self, initial_capital: float = 10000.0):
         self.initial_capital = initial_capital
-
-    def run_fixed_allocation(
-        self, prices: pd.DataFrame, weights: dict[str, float], rebalance_freq: str = "ME"
-    ) -> pd.DataFrame:
-        """
-        Backtest a fixed allocation strategy with periodic rebalancing.
-
-        Args:
-            prices: DataFrame of asset prices (index is Datetime).
-            weights: Dictionary of target weights {ticker: weight}.
-            rebalance_freq: Pandas frequency string (e.g., 'ME' for Month End).
-
-        Returns:
-            DataFrame with 'Portfolio Value' and daily returns.
-        """
-        # Validation
-        if not np.isclose(sum(weights.values()), 1.0):
-            raise ValueError("Weights must sum to 1.0")
-
-        # Align data
-        assets = list(weights.keys())
-        # Ensure we have all assets in prices
-        missing_assets = [a for a in assets if a not in prices.columns]
-        if missing_assets:
-            raise ValueError(f"Prices DataFrame missing assets: {missing_assets}")
-
-        prices = prices[assets].dropna()
-
-        if prices.empty:
-            raise ValueError("No price data available for selected assets.")
-
-        # Identify rebalance dates (last trading day of each period)
-        # We use a robust grouper to find the last valid index in each period
-        rebalance_dates = prices.groupby(pd.Grouper(freq=rebalance_freq)).apply(lambda x: x.index[-1])
-
-        # Ensure start date is included for initial allocation
-        start_date = prices.index[0]
-        if start_date not in rebalance_dates.values:
-            # Prepend start date
-            all_dates = [start_date, *rebalance_dates.tolist()]
-            all_dates = sorted(set(all_dates))  # Remove duplicates and sort
-        else:
-            all_dates = rebalance_dates.tolist()
-
-        # Simulation State
-        current_capital = self.initial_capital
-        holdings = dict.fromkeys(assets, 0.0)
-        portfolio_history = []
-
-        # Iterate through periods
-        for i in range(len(all_dates) - 1):
-            start_period = all_dates[i]
-            end_period = all_dates[i + 1]
-
-            # 1. Rebalance at start_period (using prices at start_period)
-            current_prices = prices.loc[start_period]
-            for asset, weight in weights.items():
-                holdings[asset] = (current_capital * weight) / current_prices[asset]
-
-            # 2. Evolve value through the period
-            # Get prices from start_period (exclusive) to end_period (inclusive)
-            period_prices = prices.loc[start_period:end_period].iloc[1:]
-
-            if period_prices.empty:
-                continue
-
-            # Calculate daily value: sum(holdings * price)
-            daily_values = period_prices.mul(pd.Series(holdings)).sum(axis=1)
-            portfolio_history.append(daily_values)
-
-            # Update capital for next rebalance
-            current_capital = daily_values.iloc[-1]
-
-        # Combine history
-        if portfolio_history:
-            full_curve = pd.concat(portfolio_history)
-            # Add initial point
-            full_curve.loc[start_date] = self.initial_capital
-            full_curve = full_curve.sort_index()
-        else:
-            # Single day or no data
-            full_curve = pd.Series([self.initial_capital], index=[start_date])
-
-        return full_curve.to_frame(name="Portfolio Value")
-
-    def run_walk_forward(  # noqa: C901
-        self,
-        prices: pd.DataFrame,
-        optimizer_func: callable,
-        lookback_window: int = 252,
-        rebalance_freq: str = "ME",
-    ) -> pd.DataFrame:
-        """
-        Backtest a strategy using walk-forward optimization.
-
-        Args:
-            prices: DataFrame of asset prices (index is Datetime).
-            optimizer_func: Function that takes (returns_df) and returns weights dict/array.
-            lookback_window: Number of trading days to look back for optimization.
-            rebalance_freq: Pandas frequency string (e.g., 'ME' for Month End).
-
-        Returns:
-            DataFrame with 'Portfolio Value'.
-        """
-        # Align data
-        prices = prices.dropna()
-        if prices.empty:
-            raise ValueError("No price data available.")
-
-        assets = prices.columns.tolist()
-
-        # Identify rebalance dates
-        rebalance_dates = prices.groupby(pd.Grouper(freq=rebalance_freq)).apply(lambda x: x.index[-1])
-
-        # Filter rebalance dates to ensure we have enough history for the first rebalance
-        valid_rebalance_dates = [d for d in rebalance_dates if prices.index.get_loc(d) >= lookback_window]
-
-        if not valid_rebalance_dates:
-            raise ValueError(f"Not enough history for lookback window of {lookback_window} days.")
-
-        # Simulation State
-        start_date = valid_rebalance_dates[0]
-        current_capital = self.initial_capital
-        holdings = dict.fromkeys(assets, 0.0)
-        portfolio_history = []
-
-        # Iterate through periods
-        for i in range(len(valid_rebalance_dates) - 1):
-            rebalance_date = valid_rebalance_dates[i]
-            next_rebalance_date = valid_rebalance_dates[i + 1]
-
-            # 1. Get Historical Data for Optimization
-            # Slice from (rebalance_date - lookback) to rebalance_date
-            # We use iloc to get the exact window size
-            loc_idx = prices.index.get_loc(rebalance_date)
-            start_idx = loc_idx - lookback_window + 1  # +1 to include rebalance_date in count
-
-            if start_idx < 0:
-                continue  # Should be handled by valid_rebalance_dates check, but safety first
-
-            hist_prices = prices.iloc[start_idx : loc_idx + 1]
-            hist_returns = hist_prices.pct_change().dropna()
-
-            # 2. Run Optimizer
-            try:
-                # optimizer_func is expected to return a dictionary {ticker: weight} or array
-                weights_result = optimizer_func(hist_returns)
-
-                # Handle different return types from optimizer
-                if isinstance(weights_result, (np.ndarray, list)):
-                    weights = dict(zip(assets, weights_result))
-                elif isinstance(weights_result, dict):
-                    weights = weights_result
-                else:
-                    raise TypeError("Optimizer must return dict or array/list of weights")  # noqa: TRY301
-
-            except Exception as e:
-                print(f"Optimization failed at {rebalance_date}: {e}. Keeping previous weights.")
-                # If optimization fails, we keep previous holdings (drift) or could rebalance to previous weights
-                # Here we choose to drift (do nothing), effectively skipping rebalance logic but still evolving value
-                # To do that, we just skip the rebalancing part below
-                pass
-            else:
-                # 3. Rebalance
-                current_prices = prices.loc[rebalance_date]
-                for asset, weight in weights.items():
-                    holdings[asset] = (current_capital * weight) / current_prices[asset]
-
-            # 4. Evolve value through the period
-            period_prices = prices.loc[rebalance_date:next_rebalance_date].iloc[1:]
-
-            if period_prices.empty:
-                continue
-
-            daily_values = period_prices.mul(pd.Series(holdings)).sum(axis=1)
-            portfolio_history.append(daily_values)
-
-            current_capital = daily_values.iloc[-1]
-
-        # Combine history
-        if portfolio_history:
-            full_curve = pd.concat(portfolio_history)
-            # Add initial point
-            full_curve.loc[start_date] = self.initial_capital
-            full_curve = full_curve.sort_index()
-        else:
-            full_curve = pd.Series([self.initial_capital], index=[start_date])
-
-        return full_curve.to_frame(name="Portfolio Value")
-
-    def run_buy_and_hold(self, prices: pd.DataFrame, weights: dict[str, float]) -> pd.DataFrame:
-        """
-        Backtest a Buy and Hold strategy (no rebalancing).
-
-        Args:
-            prices: DataFrame of asset prices (index is Datetime).
-            weights: Dictionary of initial target weights {ticker: weight}.
-
-        Returns:
-            DataFrame with 'Portfolio Value'.
-        """
-        # Validation
-        if not np.isclose(sum(weights.values()), 1.0):
-            raise ValueError("Weights must sum to 1.0")
-
-        # Align data
-        assets = list(weights.keys())
-        missing_assets = [a for a in assets if a not in prices.columns]
-        if missing_assets:
-            raise ValueError(f"Prices DataFrame missing assets: {missing_assets}")
-
-        prices = prices[assets].dropna()
-        if prices.empty:
-            raise ValueError("No price data available for selected assets.")
-
-        # Initial Allocation
-        start_date = prices.index[0]
-        initial_prices = prices.loc[start_date]
-        holdings = {}
-
-        for asset, weight in weights.items():
-            holdings[asset] = (self.initial_capital * weight) / initial_prices[asset]
-
-        # Calculate daily value for the entire period
-        # Value = sum(shares * price) for each day
-        portfolio_value = prices.mul(pd.Series(holdings)).sum(axis=1)
-
-        return portfolio_value.to_frame(name="Portfolio Value")
 
     def calculate_metrics(self, portfolio_value: pd.DataFrame) -> dict:
         """
@@ -319,3 +120,257 @@ class Backtester:
             "Sharpe Ratio": sharpe,
             "Max Drawdown": max_drawdown,
         }
+
+    def run_buy_and_hold(self, prices: pd.DataFrame, weights: dict[str, float]) -> BacktestResult:
+        """
+        Backtest a Buy and Hold strategy (no rebalancing).
+
+        Args:
+            prices: DataFrame of asset prices (index is Datetime).
+            weights: Dictionary of initial target weights {ticker: weight}.
+
+        Returns:
+            BacktestResult object.
+        """
+        # Validation
+        if not np.isclose(sum(weights.values()), 1.0):
+            raise ValueError("Weights must sum to 1.0")
+
+        # Align data
+        assets = list(weights.keys())
+        missing_assets = [a for a in assets if a not in prices.columns]
+        if missing_assets:
+            raise ValueError(f"Prices DataFrame missing assets: {missing_assets}")
+
+        prices = prices[assets].dropna()
+        if prices.empty:
+            raise ValueError("No price data available for selected assets.")
+
+        # Initial Allocation
+        start_date = prices.index[0]
+        initial_prices = prices.loc[start_date]
+        holdings = {}
+
+        for asset, weight in weights.items():
+            holdings[asset] = (self.initial_capital * weight) / initial_prices[asset]
+
+        # Calculate daily value for the entire period
+        asset_values = prices.mul(pd.Series(holdings))
+        portfolio_value = asset_values.sum(axis=1).to_frame(name="Portfolio Value")
+
+        # Calculate weights over time
+        weights_history = asset_values.div(portfolio_value["Portfolio Value"], axis=0)
+
+        metrics = self.calculate_metrics(portfolio_value)
+
+        return BacktestResult(portfolio_value, weights_history, metrics)
+
+    def run_fixed_allocation(
+        self, prices: pd.DataFrame, weights: dict[str, float], rebalance_freq: str = "ME"
+    ) -> BacktestResult:
+        """
+        Backtest a fixed allocation strategy with periodic rebalancing.
+
+        Args:
+            prices: DataFrame of asset prices (index is Datetime).
+            weights: Dictionary of target weights {ticker: weight}.
+            rebalance_freq: Pandas frequency string (e.g., 'ME' for Month End).
+
+        Returns:
+            BacktestResult object.
+        """
+        # Validation
+        if not np.isclose(sum(weights.values()), 1.0):
+            raise ValueError("Weights must sum to 1.0")
+
+        # Align data
+        assets = list(weights.keys())
+        missing_assets = [a for a in assets if a not in prices.columns]
+        if missing_assets:
+            raise ValueError(f"Prices DataFrame missing assets: {missing_assets}")
+
+        prices = prices[assets].dropna()
+
+        if prices.empty:
+            raise ValueError("No price data available for selected assets.")
+
+        # Identify rebalance dates
+        rebalance_dates = prices.groupby(pd.Grouper(freq=rebalance_freq)).apply(lambda x: x.index[-1])
+
+        # Ensure start date is included
+        start_date = prices.index[0]
+        if start_date not in rebalance_dates.values:
+            all_dates = [start_date, *rebalance_dates.tolist()]
+            all_dates = sorted(set(all_dates))
+        else:
+            all_dates = rebalance_dates.tolist()
+
+        # Simulation State
+        current_capital = self.initial_capital
+        holdings = dict.fromkeys(assets, 0.0)
+        portfolio_history = []
+        weights_history_list = []
+
+        # Iterate through periods
+        for i in range(len(all_dates) - 1):
+            start_period = all_dates[i]
+            end_period = all_dates[i + 1]
+
+            # 1. Rebalance at start_period
+            current_prices = prices.loc[start_period]
+            for asset, weight in weights.items():
+                holdings[asset] = (current_capital * weight) / current_prices[asset]
+
+            # Capture weights at rebalance (start of period)
+            # These are exactly the target weights
+            w_series = pd.Series(weights, name=start_period)
+            weights_history_list.append(w_series.to_frame().T)
+
+            # 2. Evolve value through the period
+            period_prices = prices.loc[start_period:end_period].iloc[1:]
+
+            if period_prices.empty:
+                continue
+
+            daily_asset_values = period_prices.mul(pd.Series(holdings))
+            daily_total = daily_asset_values.sum(axis=1)
+
+            portfolio_history.append(daily_total)
+            weights_history_list.append(daily_asset_values.div(daily_total, axis=0))
+
+            # Update capital for next rebalance
+            current_capital = daily_total.iloc[-1]
+
+        # Combine history
+        if portfolio_history:
+            full_curve = pd.concat(portfolio_history)
+            full_curve.loc[start_date] = self.initial_capital
+            full_curve = full_curve.sort_index().to_frame(name="Portfolio Value")
+
+            full_weights = pd.concat(weights_history_list).sort_index()
+            full_weights = full_weights.fillna(0.0)
+        else:
+            full_curve = pd.Series([self.initial_capital], index=[start_date]).to_frame(name="Portfolio Value")
+            full_weights = pd.DataFrame([weights], index=[start_date])
+
+        metrics = self.calculate_metrics(full_curve)
+        return BacktestResult(full_curve, full_weights, metrics)
+
+    def run_walk_forward(  # noqa: C901
+        self,
+        prices: pd.DataFrame,
+        optimizer_func: callable,
+        lookback_window: int = 252,
+        rebalance_freq: str = "ME",
+    ) -> BacktestResult:
+        """
+        Backtest a strategy using walk-forward optimization.
+
+        Args:
+            prices: DataFrame of asset prices (index is Datetime).
+            optimizer_func: Function that takes (returns_df) and returns weights dict/array.
+            lookback_window: Number of trading days to look back for optimization.
+            rebalance_freq: Pandas frequency string (e.g., 'ME' for Month End).
+
+        Returns:
+            BacktestResult object.
+        """
+        # Align data
+        prices = prices.dropna()
+        if prices.empty:
+            raise ValueError("No price data available.")
+
+        assets = prices.columns.tolist()
+
+        # Identify rebalance dates
+        rebalance_dates = prices.groupby(pd.Grouper(freq=rebalance_freq)).apply(lambda x: x.index[-1])
+
+        # Filter rebalance dates
+        valid_rebalance_dates = [d for d in rebalance_dates if prices.index.get_loc(d) >= lookback_window]
+
+        if not valid_rebalance_dates:
+            raise ValueError(f"Not enough history for lookback window of {lookback_window} days.")
+
+        # Simulation State
+        start_date = valid_rebalance_dates[0]
+        current_capital = self.initial_capital
+        holdings = dict.fromkeys(assets, 0.0)
+        portfolio_history = []
+        weights_history_list = []
+
+        # Iterate through periods
+        for i in range(len(valid_rebalance_dates) - 1):
+            rebalance_date = valid_rebalance_dates[i]
+            next_rebalance_date = valid_rebalance_dates[i + 1]
+
+            # 1. Get Historical Data
+            loc_idx = prices.index.get_loc(rebalance_date)
+            start_idx = loc_idx - lookback_window + 1
+
+            if start_idx < 0:
+                continue
+
+            hist_prices = prices.iloc[start_idx : loc_idx + 1]
+            hist_returns = hist_prices.pct_change().dropna()
+
+            # 2. Run Optimizer
+            try:
+                weights_result = optimizer_func(hist_returns)
+
+                if isinstance(weights_result, (np.ndarray, list)):
+                    weights = dict(zip(assets, weights_result))
+                elif isinstance(weights_result, dict):
+                    weights = weights_result
+                else:
+                    raise TypeError("Optimizer must return dict or array/list of weights")  # noqa: TRY301
+
+            except Exception as e:
+                print(f"Optimization failed at {rebalance_date}: {e}. Keeping previous weights.")
+                pass
+            else:
+                # 3. Rebalance
+                current_prices = prices.loc[rebalance_date]
+                for asset, weight in weights.items():
+                    holdings[asset] = (current_capital * weight) / current_prices[asset]
+
+            # Capture weights at rebalance_date (start of period)
+            # We calculate actual weights based on holdings and current prices
+            # This handles both rebalanced and drifted (failed opt) states
+            current_vals = pd.Series(holdings) * prices.loc[rebalance_date]
+            total_val = current_vals.sum()
+            if total_val > 0:
+                w = current_vals / total_val
+                weights_history_list.append(w.to_frame(name=rebalance_date).T)
+
+            # 4. Evolve value through the period
+            period_prices = prices.loc[rebalance_date:next_rebalance_date].iloc[1:]
+
+            if period_prices.empty:
+                continue
+
+            daily_asset_values = period_prices.mul(pd.Series(holdings))
+            daily_total = daily_asset_values.sum(axis=1)
+
+            portfolio_history.append(daily_total)
+            weights_history_list.append(daily_asset_values.div(daily_total, axis=0))
+
+            current_capital = daily_total.iloc[-1]
+
+        # Combine history
+        if portfolio_history:
+            full_curve = pd.concat(portfolio_history)
+            full_curve.loc[start_date] = self.initial_capital
+            full_curve = full_curve.sort_index().to_frame(name="Portfolio Value")
+
+            full_weights = pd.concat(weights_history_list).sort_index()
+            full_weights = full_weights.fillna(0.0)
+        else:
+            full_curve = pd.Series([self.initial_capital], index=[start_date]).to_frame(name="Portfolio Value")
+            # Try to capture initial weights if loop ran at least once but no period prices
+            if weights_history_list:
+                full_weights = pd.concat(weights_history_list).sort_index()
+            else:
+                full_weights = pd.DataFrame()
+
+        metrics = self.calculate_metrics(full_curve)
+        return BacktestResult(full_curve, full_weights, metrics)
